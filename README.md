@@ -28,6 +28,8 @@ into the same shell without re-plumbing auth, streaks, stats, archive, or sync.
 | 8 | [Frontend](docs/08-frontend.md) | React/Vite/MUI structure, the grid engine, offline-first solving, accessibility |
 | 9 | [Multi-game platform](docs/09-multi-game-platform.md) | The game-module contract that makes Mini/Connections/Strands drop-in |
 | 10 | [Roadmap](docs/10-roadmap.md) | Milestones, staffing shape, risks, open questions |
+| 11 | [Agent & knowledge base](docs/11-agent-knowledge-base.md) | How the agent is built around a growable document store: design patterns, code templates, user-input playbooks |
+| 12 | [Development plan](docs/12-development-plan.md) | **Start here to build.** Ordered steps with acceptance tests, phase gates, and the first two weeks day by day |
 
 ---
 
@@ -68,7 +70,7 @@ for the solver is a legitimate variant — the service boundary in
 
 ---
 
-## The three ideas this design rests on
+## The four ideas this design rests on
 
 **1. Generate per cohort, not per user.** Puzzle generation is expensive and quality-sensitive;
 per-user generation is both unaffordable and unreviewable. Profiles are embedded and clustered
@@ -89,9 +91,16 @@ into a validated declarative layer (safe, styles the grid itself) and a sandboxe
 layer (an `iframe` with a `postMessage` bridge, decorative only). See
 [Theme engine](docs/05-theme-engine.md).
 
+**4. The agent's knowledge lives in documents, not in code.** Every instruction, convention,
+coding pattern, code template, and input-handling policy is a versioned document in a knowledge
+base that the agent loads on demand. No prompt text lives in a Python string — a lint rule
+enforces it. Adding a design pattern, a boilerplate scene template, or a rule for handling a
+weird profile input is a document + an eval, not a code change and a deploy. See
+[Agent & knowledge base](docs/11-agent-knowledge-base.md).
+
 ---
 
 ## Status
 
 Design phase. No implementation yet — these documents are the spec that implementation should be
-reviewed against.
+reviewed against. [Doc 12](docs/12-development-plan.md) is the build order.
