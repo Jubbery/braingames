@@ -1,0 +1,25 @@
+[project]
+name = "braingames-kb"
+version = "0.1.0"
+description = "The agent knowledge base: documents, routing, and prompt assembly"
+requires-python = ">=3.11"
+dependencies = [
+    "braingames-core",
+    "pydantic>=2.8",
+    "PyYAML>=6.0",
+    "typer>=0.12",
+    "rich>=13.7",
+]
+
+[project.scripts]
+bg = "braingames_kb.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/braingames_kb"]
+
+[tool.uv.sources]
+braingames-core = { workspace = true }

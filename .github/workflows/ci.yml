@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --all-packages
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Typecheck
+        run: uv run mypy packages/core/src packages/kb/src
+
+      # The rules that keep the knowledge base from being bypassed:
+      # no prompt text in application code, no unmetered model calls.
+      - name: Conventions
+        run: uv run python scripts/check_conventions.py
+
+      - name: Tests
+        run: uv run pytest
+
+      # Errors fail the build. Warnings (unmeasured token counts, missing
+      # evidence, past review dates) are reported and do not — they are the
+      # backlog, not the gate.
+      - name: Validate knowledge base
+        run: uv run bg kb validate
+
+      - name: Knowledge base stats
+        if: always()
+        run: uv run bg kb stats

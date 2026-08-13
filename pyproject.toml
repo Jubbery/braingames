@@ -1,0 +1,55 @@
+[project]
+name = "braingames"
+version = "0.1.0"
+description = "Braingames — personalized daily puzzle platform"
+requires-python = ">=3.11"
+dependencies = [
+    "braingames-core",
+    "braingames-kb",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+braingames-core = { workspace = true }
+braingames-kb = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-PyYAML>=6.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["packages/core/src", "packages/kb/src"]
+# Design docs contain illustrative Python in fenced blocks. It is prose, not code:
+# formatting it churns the diff and breaks deliberate alignment.
+extend-exclude = ["docs", "knowledge"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]  # line length is formatter's job
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+mypy_path = "packages/core/src:packages/kb/src"
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["packages/core/tests", "packages/kb/tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "live: hits the Anthropic API; skipped unless ANTHROPIC_API_KEY is set",
+]

@@ -1,0 +1,72 @@
+name: theme-scenes
+stage: theme_scene_generation
+description: >
+  Seed golden set for theme scene generation. Scenarios span motif families that stress
+  different parts of the theme engine contract: particulate motion, static geometry,
+  high-contrast palettes, and reduced-motion behaviour.
+
+  The runner is a stub until P3.6 — these scenarios exercise routing and assembly, not
+  puzzle quality. Do not promote a document on stub numbers.
+
+metrics:
+  - name: scene_validation_pass
+    direction: higher
+    gate: true
+    tolerance: 0.02
+    fmt: ".2f"
+  - name: frame_budget_pass
+    direction: higher
+    gate: true
+    tolerance: 0.02
+    fmt: ".2f"
+  - name: contrast_pass
+    direction: higher
+    gate: true
+    tolerance: 0.01
+    fmt: ".2f"
+  - name: visual_novelty
+    direction: higher
+    gate: false
+    tolerance: 0.05
+    fmt: ".2f"
+  - name: mean_tokens_per_call
+    direction: lower
+    gate: false
+    tolerance: 5000
+    fmt: ".0f"
+
+scenarios:
+  - id: kelp-forest-dusk
+    notes: Particulate drift in a cold, deep palette. Exercises the particle pattern.
+    ctx:
+      cohort_tags: [science.biology, outdoors.diving]
+      tier: 2
+      motif: drifting plankton in a kelp forest at dusk
+
+  - id: desert-observatory
+    notes: Static geometry, high contrast, no particulate. Should NOT pull the particle doc.
+    ctx:
+      cohort_tags: [science.astronomy, outdoors.camping]
+      tier: 3
+      motif: desert observatory under a clear night sky
+
+  - id: bakery-morning
+    notes: Warm palette, gentle motion. Tests that generic motifs still get the template.
+    ctx:
+      cohort_tags: [food.baking, food.coffee]
+      tier: 1
+      motif: flour dust in morning light through a bakery window
+
+  - id: printing-press
+    notes: Mechanical motif, no particulate, tight typography constraints.
+    ctx:
+      cohort_tags: [literature.nonfiction, art.design]
+      tier: 2
+      motif: letterpress type cases and ink rollers
+
+  - id: general-no-motif
+    notes: Sparse cohort, no motif. Baseline — only always-on documents should route in.
+    ctx:
+      cohort_tags: []
+      tier: 1
+      motif: null

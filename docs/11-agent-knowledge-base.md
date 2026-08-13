@@ -94,6 +94,7 @@ supersedes: [scene-particles-v1]
 evidence: eval/theme-frame-budget@2026-09-20   # what proved this belongs
 review_by: 2027-03-01
 owner: theming
+required: false                            # never drop this to fit a budget
 ---
 ```
 
@@ -104,6 +105,11 @@ owner: theming
   justified it gets challenged at review time.
 - `review_by` forces expiry. A knowledge base that only grows becomes noise, and noise degrades
   model output — this is not a hypothetical, it's the single most common way prompt systems rot.
+- `required` marks a document budgeting may never drop. For most documents a budget squeeze is a
+  quality tradeoff — losing a pattern costs some polish. For a few it is a safety tradeoff:
+  silently dropping `injection-defense` because three other documents sorted ahead of it is not
+  an acceptable failure mode. Required documents are admitted before anything else, and a budget
+  too small to hold them raises rather than quietly omitting one.
 
 ## 11.3 Three-tier loading
 
