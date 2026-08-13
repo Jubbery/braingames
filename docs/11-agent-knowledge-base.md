@@ -341,6 +341,10 @@ and dilutes attention, so the default verdict is reject.
 
 ### Decay: the part everyone skips
 
+`bg kb review` produces this list. It is a command rather than a calendar reminder because
+nothing breaks when the pass is skipped — output just quietly gets worse, which is not a signal
+anyone notices in time.
+
 Every 90 days, and every time a model is upgraded:
 
 - Documents with zero reads in the window are challenged. Justify or deprecate.
@@ -396,6 +400,11 @@ The knowledge base ships as skill packages for the coding side:
                                      + knowledge/patterns/scene-*.md
                                      + knowledge/templates/scene-*.ts
 ```
+
+`.claude/skills/` is **generated**, never hand-edited: `bg kb sync-skills` derives it from
+`knowledge/`, and CI runs `bg kb sync-skills --check` so a knowledge change that forgets the sync
+fails the build rather than leaving coding agents on stale guidance. Editing the output directly
+would recreate exactly the drift the single-substrate design exists to prevent.
 
 If the theme-code agent later moves to Managed Agents, these same directories become uploaded
 Skills with no restructuring — the layout is chosen to make that a deployment change rather than

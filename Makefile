@@ -1,9 +1,9 @@
-.PHONY: install check test lint fmt typecheck conventions kb-validate kb-index kb-stats clean
+.PHONY: install check test lint fmt typecheck conventions kb-validate kb-index kb-stats kb-skills-check kb-review kb-sync clean
 
 install:
 	uv sync --all-packages
 
-check: lint typecheck conventions test kb-validate
+check: lint typecheck conventions test kb-validate kb-skills-check
 
 lint:
 	uv run ruff check .
@@ -30,6 +30,15 @@ kb-index:
 
 kb-stats:
 	uv run bg kb stats
+
+kb-skills-check:
+	uv run bg kb sync-skills --check
+
+kb-review:
+	uv run bg kb review
+
+kb-sync:
+	uv run bg kb sync-skills
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

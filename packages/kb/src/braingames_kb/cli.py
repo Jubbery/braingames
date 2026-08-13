@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -14,10 +15,12 @@ from braingames_core.costs import make_sink, rollup
 
 from .assembler import SpineTooLargeError, assemble, fingerprint
 from .evalkit import GoldenSet, StubRunner, run_eval
+from .lifecycle import review, scaffold, usage_from_log
 from .loader import KnowledgeBase, KnowledgeBaseError
-from .models import Stage
+from .models import Kind, Stage
 from .router import STAGE_BUDGETS, RequiredDocsOverflowError, RoutingContext, explain
 from .router import route as route_docs
+from .skills import check, sync
 from .tools import TOOL_DEF
 from .volatile import VolatilePromptError
 
@@ -395,3 +398,128 @@ def costs(
 
 if __name__ == "__main__":
     app()
+
+
+# ----------------------------------------------------------------------
+# kb new / review / sync-skills
+# ----------------------------------------------------------------------
+
+
+@kb_app.command("new")
+def kb_new(
+    doc_id: Annotated[str, typer.Argument(help="Slug, e.g. scene-ribbon-flow")],
+    kind: Annotated[Kind, typer.Option(help="Which kind of knowledge this is")],
+    stage: Annotated[list[Stage], typer.Option("--stage", help="Repeatable")],
+    summary: Annotated[str, typer.Option(help="Index line. Lead with 'Use when...'")],
+    owner: Annotated[str, typer.Option()] = "unassigned",
+    tag: Annotated[list[str] | None, typer.Option("--tag")] = None,
+    motif: Annotated[list[str] | None, typer.Option("--motif-keyword")] = None,
+    tier: Annotated[list[int] | None, typer.Option("--tier")] = None,
+    always: Annotated[bool, typer.Option("--always")] = False,
+    required: Annotated[bool, typer.Option("--required")] = False,
+    code: Annotated[bool, typer.Option("--code", help="Create a .ts template")] = False,
+) -> None:
+    """Scaffold a new draft document with valid frontmatter."""
+    try:
+        path = scaffold(
+            settings().knowledge_dir,
+            doc_id=doc_id,
+            kind=kind,
+            stages=list(stage),
+            summary=summary,
+            owner=owner,
+            always=always,
+            tags=tag,
+            motif_keywords=motif,
+            tiers=tier,
+            required=required,
+            suffix=".ts" if code else ".md",
+        )
+    except (FileExistsError, KeyError) as exc:
+        err.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    console.print(f"[green]Created[/green] {path.relative_to(settings().knowledge_dir.parent)}")
+    console.print(
+        "\nIt is a [yellow]draft[/yellow]: drafts are never routed into prompts.\n"
+        "Write the body, then `bg kb eval` it to earn [green]active[/green]."
+    )
+
+
+@kb_app.command("review")
+def kb_review(
+    usage_log: Annotated[Path | None, typer.Option(help="read_knowledge log (JSONL)")] = None,
+) -> None:
+    """The decay pass: what to re-evaluate, retire, or delete.
+
+    A knowledge base that only grows becomes noise, and noise degrades output.
+    Nothing breaks when you skip this, which is exactly why it needs a command.
+    """
+    kb = _load()
+    usage = usage_from_log(usage_log) if usage_log else None
+    report = review(kb, usage=usage)
+
+    sections = [
+        ("Review overdue", report.overdue, "yellow"),
+        ("No evidence", report.unevidenced, "yellow"),
+        ("Tokens unmeasured", report.unmeasured, "cyan"),
+        ("Never read", report.unread, "yellow"),
+        ("Stale drafts", report.stale_drafts, "cyan"),
+        ("Deprecated — deletable", report.deletable, "red"),
+    ]
+
+    for title, items, colour in sections:
+        if not items:
+            continue
+        table = Table(title=f"{title} ({len(items)})")
+        table.add_column("ref", style="cyan")
+        table.add_column("reason", style=colour)
+        table.add_column("action", overflow="fold")
+        for item in items:
+            table.add_row(item.ref, item.reason, item.action)
+        console.print(table)
+
+    for stage_, cost, refs in report.oversized_spines:
+        console.print(
+            f"[red]Spine over cap[/red] — {stage_.value}: {cost} tokens across "
+            f"{len(refs)} documents. Move situational parts into patterns/."
+        )
+
+    if not report.usage_available:
+        console.print(
+            "\n[dim]No usage log supplied, so the unread check was skipped rather than "
+            "guessed at. Pass --usage-log once generation runs are producing one.[/dim]"
+        )
+
+    if report.is_clean:
+        console.print("[green]Nothing to review. The knowledge base is current.[/green]")
+
+
+@kb_app.command("sync-skills")
+def kb_sync_skills(
+    check_only: Annotated[
+        bool, typer.Option("--check", help="Fail if stale; write nothing")
+    ] = False,
+) -> None:
+    """Publish knowledge documents as Claude Code skills under .claude/skills/."""
+    kb = _load()
+    root = settings().knowledge_dir.parent / ".claude" / "skills"
+
+    if check_only:
+        stale = check(kb, root)
+        if stale:
+            err.print(f"[red]Skills are stale: {', '.join(stale)}[/red]")
+            err.print("[dim]Run `bg kb sync-skills` and commit the result.[/dim]")
+            raise typer.Exit(code=1)
+        console.print("[green]Skills are up to date.[/green]")
+        return
+
+    result = sync(kb, root)
+    for path in result.written:
+        console.print(f"[green]wrote[/green]  {path.relative_to(root.parent.parent)}")
+    for path in result.removed:
+        console.print(f"[red]pruned[/red] {path.relative_to(root.parent.parent)}")
+    for name in result.empty:
+        console.print(f"[yellow]empty[/yellow]  {name} — no active documents for its stages yet")
+    if not result.changed:
+        console.print("[dim]Already up to date.[/dim]")

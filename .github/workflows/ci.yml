@@ -44,6 +44,15 @@ jobs:
       - name: Validate knowledge base
         run: uv run bg kb validate
 
+      # .claude/skills/ is generated from knowledge/. A knowledge change that
+      # forgets the sync would leave coding agents on stale guidance.
+      - name: Skills in sync
+        run: uv run bg kb sync-skills --check
+
+      - name: Decay pass (advisory)
+        if: always()
+        run: uv run bg kb review
+
       - name: Knowledge base stats
         if: always()
         run: uv run bg kb stats

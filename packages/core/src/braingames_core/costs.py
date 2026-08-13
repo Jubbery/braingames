@@ -89,6 +89,7 @@ class LLMCall(BaseModel):
     cost_usd: Decimal = Decimal("0")
     duration_ms: int = 0
     run_id: str | None = None
+    correlation_id: str | None = None
     cohort_id: str | None = None
     kb_version: str | None = None
     error: str | None = None

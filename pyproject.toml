@@ -47,6 +47,12 @@ explicit_package_bases = true
 module = ["tests.*"]
 disallow_untyped_defs = false
 
+# The OTLP exporter is an optional extra — tracing degrades to no-op spans
+# without it, so its absence must not fail a typecheck.
+[[tool.mypy.overrides]]
+module = ["opentelemetry.exporter.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["packages/core/tests", "packages/kb/tests"]
 addopts = "-q --strict-markers"

@@ -73,6 +73,11 @@ Anthropic API key handling via the standard credential chain.
 **Done when.** A request to `/health` produces a trace with a correlation ID visible in logs, and
 a missing required env var fails at startup with a readable message rather than at first use.
 
+> Built ahead of the API in `braingames_core.obs`. Correlation context is stamped onto log
+> records by a `logging` record factory rather than read at format time — the formatter can run
+> outside the context that created the record (queue handlers, worker threads), and reading it
+> late loses the id exactly when it matters. `/health` itself lands with the API in P4.
+
 ### P0.4 The generation cost meter
 
 **Build.** A tiny module that wraps every Anthropic call, records `usage` (input, output,
@@ -150,6 +155,15 @@ and [doc 04](04-puzzle-generation.md), not written fresh. Plus the `input-handli
 
 **Done when.** `bg kb validate` passes, spine is under 8k tokens, and `bg kb index --stage
 theme_ideation` renders a sensible index.
+
+### P1.7 Lifecycle tooling
+
+**Build.** `bg kb new` scaffolds a valid draft document; `bg kb review` runs the decay pass from
+[§11.7](11-agent-knowledge-base.md#117-the-document-lifecycle); `bg kb sync-skills` publishes the
+`codegen_*` documents to `.claude/skills/` per [§11.8](11-agent-knowledge-base.md#118-serving-both-agents).
+
+**Done when.** A scaffolded document validates without hand-editing, `bg kb review` reports
+overdue and unevidenced documents, and CI fails when `.claude/skills/` is stale.
 
 ---
 

@@ -7,6 +7,8 @@ dependencies = [
     "pydantic>=2.8",
     "pydantic-settings>=2.4",
     "anthropic>=0.40",
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
 ]
 
 [build-system]
