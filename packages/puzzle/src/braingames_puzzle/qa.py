@@ -20,12 +20,11 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol
 
-from .lexicon import LexiconIndex
+from .lexicon import OBSCURE_THRESHOLD, LexiconIndex
 from .models import Direction, Puzzle, Slot
 from .templates import MIN_WORD_LENGTH, WORD_COUNT_BANDS
 
 MAX_CLUE_CHARS = 120
-OBSCURE_THRESHOLD = 0.7
 
 
 class Severity(StrEnum):

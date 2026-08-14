@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 
 from braingames_core import obs
 
-from .lexicon import LexiconEntry, LexiconIndex, iter_bits
+from .lexicon import OBSCURE_THRESHOLD, LexiconEntry, LexiconIndex, iter_bits
 from .models import Fill, GridPattern, Slot
 
 log = obs.get_logger(__name__)
@@ -33,14 +33,11 @@ log = obs.get_logger(__name__)
 #: mean because they have fewer degrees of freedom left after the theme.
 MEAN_SCORE_FLOOR: dict[int, int] = {1: 55, 2: 50, 3: 45}
 ABSOLUTE_SCORE_FLOOR = 25
-OBSCURE_THRESHOLD = 0.7
 
-#: How many genuinely obscure entries a tier tolerates. This replaced a count of
-#: entries scoring under 40, which stopped meaning anything once length moved
-#: out of the score and into obscurity where it belongs: with the bundled
-#: sources nothing scores under 40, so that gate could never fire. Obscurity is
-#: what a solver actually feels, so that is what the gate counts.
-MAX_OBSCURE_ENTRIES: dict[int, int] = {1: 2, 2: 5, 3: 8}
+#: How many obscure entries a tier tolerates. Set to what a solver would accept,
+#: not to what the current word list can achieve — see the note in
+#: ``evaluate``. A Monday should have almost none.
+MAX_OBSCURE_ENTRIES: dict[int, int] = {1: 3, 2: 6, 3: 10}
 
 #: Floor on how few candidates a length may be left with before its score floor
 #: is relaxed. Deliberately tied to ``max_candidates`` rather than set high:
@@ -336,6 +333,13 @@ def evaluate(
     Theme entries are excluded from scoring: they were chosen deliberately and
     are usually absent from the lexicon, so judging them on fill quality would
     penalise exactly the entries the puzzle is about.
+
+    **These gates are calibrated to what a solver will accept, and the bundled
+    word list does not currently meet them.** A measured 15x15 came back with 35
+    of its 72 non-theme entries attested nowhere but the dictionary. That is a
+    true statement about the fill and the gate should say so, so the thresholds
+    are not loosened to let it through. A gate tuned until the current data
+    passes measures the data, not the puzzle.
     """
     theme_slots = theme_slots or set()
     pattern = fill.pattern
@@ -550,20 +554,39 @@ def fill_with_retries(
     A fill that completes but scores badly means the search settled for junk it
     was allowed to use. Raising the floor removes that option rather than
     hoping a reshuffle avoids it (docs/04 §4.5).
+
+    When no floor produces a fill that passes, the **best completed** fill is
+    returned with its failing quality attached — not the last attempt, which is
+    usually the one whose floor was so high nothing could be filled at all. A
+    graded near-miss is something the caller can route to repair or to review; a
+    bare "exhausted" is not, and throwing away a finished grid to report one
+    would be losing the only useful thing the search produced.
     """
     config = config or FillConfig()
     last: FillResult | None = None
+    best: FillResult | None = None
 
     for bump in score_steps:
         attempt = FillConfig(**{**config.__dict__, "min_score": config.min_score + bump})
         result = fill_grid(pattern, index, theme=theme, config=attempt)
         last = result
-        if result.ok and result.quality is not None and result.quality.passes:
-            return result
+        if result.ok and result.quality is not None:
+            if result.quality.passes:
+                return result
+            if best is None or _closer(result, best):
+                best = result
         if not result.ok and result.reason.startswith(("impossible", "Theme")):
             break  # a raised floor cannot fix an unplaceable theme
 
-    return last or FillResult(fill=None, quality=None, reason="not attempted")
+    return best or last or FillResult(fill=None, quality=None, reason="not attempted")
+
+
+def _closer(candidate: FillResult, incumbent: FillResult) -> bool:
+    """Which near-miss is nearer? Fewest failing gates, then highest mean."""
+    a, b = candidate.quality, incumbent.quality
+    if a is None or b is None:
+        return a is not None
+    return (len(a.failures), -a.mean_score) < (len(b.failures), -b.mean_score)
 
 
 __all__ = [

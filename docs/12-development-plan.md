@@ -179,6 +179,17 @@ compute `obscurity`, tag by domain. Provenance per entry in `source`.
 **Done when.** ~250k entries loaded; spot-checking 100 random entries at each score band matches
 a human's judgement of fill quality; every entry has a `source`.
 
+> **Built with public-domain sources instead**, since the named wordlists are not bundled here:
+> 370k entries from `words_alpha`, a popular-words list and a frequency-ranked top-10k. They carry
+> no multi-word phrases and no human-assigned quality scores, which is the binding constraint on
+> tier-3 themed fill — see the measured results at the end of this phase. Swapping in a constructor
+> wordlist is a data change: `bg puzzle lexicon build --source-dir <dir>`.
+>
+> Score and obscurity mean different things and the split is load-bearing. Score is *attestation*
+> only. Obscurity is *solver fairness*, and is where entry length and unusual letters belong.
+> Putting length into the score instead was a real bug: it moved every long word below the solver's
+> floor while changing no candidate ordering, because ordering is per-length already.
+
 ### P2.2 Grid template library
 
 **Build.** Programmatic generation of symmetric black-square patterns, filtered by the full
@@ -219,6 +230,66 @@ right defect type, and a corpus of known-good published puzzles passes clean.
 > **Phase gate.** Do not start Phase 3 until P2.3 hits its performance and success numbers. Every
 > later phase assumes fills are fast and reliable; if they aren't, that's a research problem and
 > you want to be doing research, not building an API on top of a solver that can't fill.
+
+### P2 — measured results
+
+Numbers from the built lexicon (370,301 entries from `words_alpha` + `popular` + `google-10k`)
+against a 60-template library, 20 per band. Reproduce with `bg puzzle lexicon build`,
+`bg puzzle templates build --per-band 20 --seed 7`, then `bg puzzle fill`.
+
+| Criterion | Target | Measured |
+|---|---|---|
+| Themeless fill success, first template | > 85% | **90%** (tier 1: 20/20, tier 2: 20/20, tier 3: 14/20) |
+| Themeless p50 / p95 | — | 216ms / 12.1s |
+| Themed tier 1, template-retry pipeline | 2s p50, 8s p95 | **20/20**, p50 69ms, p95 1.8s |
+| Themed tier 2 | 2s p50, 8s p95 | 17/20, p50 458ms, p95 8.8s |
+| Themed tier 3 | 2s p50, 8s p95 | **5/20** |
+| **Quality gates on completed fills** | enforced | **0 / 52** |
+
+**The solver meets its speed and success targets. The fills it produces are not publishable, and
+that is a word-list problem, not a solver problem.** Both failing rows above have one cause.
+
+The gate row is the important one. A median completed fill carries **39 entries out of ~72
+attested nowhere but the dictionary** — `PHILOPROGENEITY`, `YASMAK`, `HYLEG`, `NESHLY`, `SNEDS`.
+The mean-score gate does not catch this (median 60.3, above every tier floor) because a score of 40
+is what "in the dictionary" earns and half the grid earning it still averages respectably. The
+obscurity gate catches it exactly.
+
+> That gate read 0.7 until it was measured against a real fill, where nothing tripped it. No short
+> word can reach 0.7 on this scale, so the check silently certified grids like the one above as
+> having zero obscure entries. The threshold now sits at 0.45, which is where the data separates —
+> a familiar-list entry lands at 0.25, a dictionary-only entry at 0.50 — and it lives in
+> `lexicon.py` beside the scale it refers to, because the solver and the QA check had each kept
+> their own copy and disagreed: `bg puzzle fill` reported 46 unfair crossings on a grid
+> `bg puzzle qa` called clean.
+>
+> The thresholds are deliberately **not** loosened to let current output through. A gate tuned
+> until the data passes measures the data, not the puzzle.
+
+Tier-3 themed feasibility has the same root. Raising the per-template budget from 2s to 25s —
+twelve times the search — moves it from 3/12 to 4/12, so more search does not buy it. The control
+agrees from the other side: the same open grids fill 7/12 with no theme at all. `bg puzzle lexicon
+stats` shows why: of 8,847 fifteen-letter entries only 44 are familiar enough for a solver to have
+a chance at, and open grids need long entries crossing long entries.
+
+**The fix is one data change.** Single-word dictionaries carry no multi-word phrases
+(`SLIPPERYSLOPE`, `ONTHEROCKS`) and no human-assigned quality scores; a constructor wordlist
+carries both. The ingest path already accepts phrases and `display` already keeps their spacing, so
+this is `bg puzzle lexicon build --source-dir <dir>` and nothing more. Every number in the table
+above should be re-measured immediately after.
+
+Two mitigations are cheap and independent of that. `bg puzzle templates vet --drop` fills every
+template once and discards the ones this lexicon cannot handle. And `theme_capacity` on each
+template reports which theme shapes the grid can hold, so Phase 3's ideation stage gets a
+constrained ask instead of proposing a theme found unplaceable at fill time — 19 of 20 themed
+failures were instant rejects at ~4ms, so trying another template is nearly free.
+
+**Gate status: the phase gate does not pass.** The deterministic machinery is done and correct:
+speed, success rate, template legality, theme placement, and fifteen mechanical checks with a
+one-defect-per-check corpus. Phase 3 work that does not depend on fill quality — clue writing
+against known-good answers, prompt assembly, the agent loop — can proceed in parallel. **No puzzle
+from this lexicon should reach a human solver**, and the M0 exit criterion (30 puzzles reviewed
+blind at ≥7/10) cannot be attempted until the wordlist is replaced.
 
 ---
 

@@ -7,6 +7,7 @@ point: one CLI is one thing to learn and one place for shell completion.
 from __future__ import annotations
 
 import json
+import random
 import statistics
 import time
 from pathlib import Path
@@ -243,10 +244,17 @@ def puzzle_fill(
     theme_entries: Annotated[str | None, typer.Option(help="Comma-separated theme answers")] = None,
     template_id: Annotated[str | None, typer.Option(help="Use a specific template")] = None,
     seed: Annotated[int, typer.Option()] = 0,
-    budget: Annotated[float, typer.Option("--budget", help="Seconds")] = 30.0,
+    budget: Annotated[float, typer.Option("--budget", help="Seconds per template")] = 8.0,
+    max_templates: Annotated[int, typer.Option(help="How many templates to try")] = 8,
     out: Annotated[Path | None, typer.Option(help="Write the puzzle as JSON")] = None,
 ) -> None:
-    """Fill a grid, optionally around a set of theme entries."""
+    """Fill a grid, optionally around a set of theme entries.
+
+    Walks the library rather than betting on one template. A theme that a
+    particular grid cannot hold is rejected in about 4ms — far cheaper than
+    searching harder — so the measured best policy is a short budget per
+    template and several templates, not one long attempt.
+    """
     index = _index()
     library = _templates()
 
@@ -258,35 +266,52 @@ def puzzle_fill(
         raise typer.Exit(code=1)
 
     answers = [w.strip().upper() for w in (theme_entries or "").split(",") if w.strip()]
-    template = candidates[seed % len(candidates)]
-    pattern = GridPattern.parse(template.pattern)
+    rng = random.Random(seed)
+    order = rng.sample(candidates, min(max_templates, len(candidates)))
 
+    tried = 0
+    unplaceable = 0
+    result = None
+    template = None
     theme: dict[str, str] = {}
-    if answers:
-        placement = tpl.place_theme(pattern, [len(a) for a in answers])
-        if placement is None:
+
+    for template in order:
+        pattern = GridPattern.parse(template.pattern)
+        theme = {}
+        if answers:
+            placement = tpl.place_theme(pattern, [len(a) for a in answers])
+            if placement is None:
+                unplaceable += 1
+                continue
+            theme = {placement[i]: answer for i, answer in enumerate(answers)}
+
+        tried += 1
+        result = fill_with_retries(
+            pattern,
+            index,
+            theme=theme,
+            config=FillConfig(tier=tier, seed=seed, time_budget_s=budget),
+        )
+        if result.ok:
+            break
+
+    if result is None or not result.ok or result.fill is None or template is None:
+        detail = result.reason if result is not None else "no template could hold the theme"
+        err.print(f"[red]No fill after {tried} template(s): {detail}[/red]")
+        if unplaceable:
+            lengths = sorted({len(a) for a in answers})
             err.print(
-                f"[red]Cannot place theme entries of lengths "
-                f"{[len(a) for a in answers]} in template {template.id}[/red]"
+                f"[yellow]{unplaceable} template(s) had no symmetric slot pair for lengths "
+                f"{lengths}. `bg puzzle templates show <id>` prints a grid; each template's "
+                f"theme_capacity lists the lengths it can hold.[/yellow]"
             )
-            raise typer.Exit(code=1)
-        theme = {placement[i]: answer for i, answer in enumerate(answers)}
-
-    result = fill_with_retries(
-        pattern,
-        index,
-        theme=theme,
-        config=FillConfig(tier=tier, seed=seed, time_budget_s=budget),
-    )
-
-    if not result.ok or result.fill is None:
-        err.print(f"[red]Fill failed after {result.elapsed_ms}ms: {result.reason}[/red]")
         raise typer.Exit(code=1)
 
+    pattern = GridPattern.parse(template.pattern)
     console.print(result.fill.grid_text())
     console.print(
-        f"\n{template.id} · {result.elapsed_ms}ms · {result.attempts} attempt(s) · "
-        f"{result.nodes} nodes"
+        f"\n{template.id} · {result.elapsed_ms}ms · {tried} template(s) · "
+        f"{result.attempts} attempt(s) · {result.nodes} nodes"
     )
     if result.quality is not None:
         quality = result.quality

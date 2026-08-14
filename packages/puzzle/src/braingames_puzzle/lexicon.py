@@ -152,6 +152,18 @@ def ingest(sources: Iterable[Source]) -> list[LexiconEntry]:
     return sorted(best.values(), key=lambda e: (-e.score, e.word))
 
 
+#: The line between "a solver has probably met this word" and "a solver has
+#: not". Set where the data separates: a familiar-list entry scores 65 and lands
+#: at 0.25 obscurity, a dictionary-only entry scores 40 and lands at 0.50, so
+#: anything above 0.45 is by construction attested nowhere but the dictionary.
+#:
+#: Defined here, beside the scale it refers to, because both the solver's
+#: quality gates and the QA crossing-fairness check need the same line and
+#: having each keep its own copy meant `bg puzzle fill` reported 46 unfair
+#: crossings on a grid `bg puzzle qa` called clean.
+OBSCURE_THRESHOLD = 0.45
+
+
 def obscurity_for(score: int, word: str = "") -> float:
     """Map attestation and intrinsic oddity to 0-1 obscurity.
 
@@ -327,6 +339,7 @@ class LexiconIndex:
 __all__ = [
     "MAX_LENGTH",
     "MIN_LENGTH",
+    "OBSCURE_THRESHOLD",
     "SCORE_COMMON",
     "SCORE_FAMILIAR",
     "SCORE_MARGINAL",
