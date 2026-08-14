@@ -16,3 +16,8 @@ build/
 .env
 .env.local
 .DS_Store
+
+# Puzzle construction data. Raw word lists are third-party downloads and the
+# lexicon and template library are built artefacts — `bg puzzle lexicon build`
+# and `bg puzzle templates build` reproduce them from scratch.
+data/

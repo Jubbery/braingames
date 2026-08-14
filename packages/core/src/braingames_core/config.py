@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     knowledge_dir: Path = Field(default_factory=lambda: _repo_root() / "knowledge")
     eval_dir: Path = Field(default_factory=lambda: _repo_root() / "eval")
 
+    # --- Puzzle construction data ---------------------------------------
+    #: Built artefacts, not source. Both are gitignored and rebuilt by
+    #: `bg puzzle lexicon build` and `bg puzzle templates build`.
+    lexicon_path: Path = Field(default_factory=lambda: _repo_root() / "data" / "lexicon.tsv.gz")
+    wordlist_dir: Path = Field(default_factory=lambda: _repo_root() / "data" / "wordlists")
+    template_path: Path = Field(default_factory=lambda: _repo_root() / "data" / "templates.json")
+
     # --- Models ---------------------------------------------------------
     # Pinned per stage. Model choice is a deliberate, reviewable decision;
     # see docs/04-puzzle-generation.md §4.8 for the cost rationale.
@@ -60,7 +67,7 @@ class Settings(BaseSettings):
     #: so leaving this empty is normal and not an error.
     anthropic_api_key: str | None = None
 
-    @field_validator("knowledge_dir", "eval_dir")
+    @field_validator("knowledge_dir", "eval_dir", "wordlist_dir", "lexicon_path", "template_path")
     @classmethod
     def _absolute(cls, v: Path) -> Path:
         return v.resolve()

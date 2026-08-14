@@ -11,6 +11,7 @@ members = [
     "braingames",
     "braingames-core",
     "braingames-kb",
+    "braingames-puzzle",
 ]
 
 [[package]]
@@ -134,6 +135,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "braingames-core" },
     { name = "braingames-kb" },
+    { name = "braingames-puzzle" },
 ]
 
 [package.dev-dependencies]
@@ -149,6 +151,7 @@ dev = [
 requires-dist = [
     { name = "braingames-core", editable = "packages/core" },
     { name = "braingames-kb", editable = "packages/kb" },
+    { name = "braingames-puzzle", editable = "packages/puzzle" },
 ]
 
 [package.metadata.requires-dev]
@@ -187,6 +190,7 @@ version = "0.1.0"
 source = { editable = "packages/kb" }
 dependencies = [
     { name = "braingames-core" },
+    { name = "braingames-puzzle" },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "rich" },
@@ -196,8 +200,28 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "braingames-core", editable = "packages/core" },
+    { name = "braingames-puzzle", editable = "packages/puzzle" },
     { name = "pydantic", specifier = ">=2.8" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "rich", specifier = ">=13.7" },
+    { name = "typer", specifier = ">=0.12" },
+]
+
+[[package]]
+name = "braingames-puzzle"
+version = "0.1.0"
+source = { editable = "packages/puzzle" }
+dependencies = [
+    { name = "braingames-core" },
+    { name = "pydantic" },
+    { name = "rich" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "braingames-core", editable = "packages/core" },
+    { name = "pydantic", specifier = ">=2.8" },
     { name = "rich", specifier = ">=13.7" },
     { name = "typer", specifier = ">=0.12" },
 ]

@@ -12,6 +12,7 @@ from rich.table import Table
 
 from braingames_core.config import settings
 from braingames_core.costs import make_sink, rollup
+from braingames_puzzle.cli import puzzle_app
 
 from .assembler import SpineTooLargeError, assemble, fingerprint
 from .evalkit import GoldenSet, StubRunner, run_eval
@@ -27,6 +28,10 @@ from .volatile import VolatilePromptError
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="Braingames developer CLI")
 kb_app = typer.Typer(no_args_is_help=True, help="Knowledge base operations")
 app.add_typer(kb_app, name="kb")
+
+# Puzzle construction lives in its own package but hangs off the same CLI:
+# one command to learn, one place for shell completion.
+app.add_typer(puzzle_app, name="puzzle")
 
 console = Console()
 err = Console(stderr=True)

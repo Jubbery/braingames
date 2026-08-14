@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "braingames-core",
     "braingames-kb",
+    "braingames-puzzle",
 ]
 
 [tool.uv.workspace]
@@ -14,6 +15,7 @@ members = ["packages/*"]
 [tool.uv.sources]
 braingames-core = { workspace = true }
 braingames-kb = { workspace = true }
+braingames-puzzle = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -27,7 +29,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["packages/core/src", "packages/kb/src"]
+src = ["packages/core/src", "packages/kb/src", "packages/puzzle/src"]
 # Design docs contain illustrative Python in fenced blocks. It is prose, not code:
 # formatting it churns the diff and breaks deliberate alignment.
 extend-exclude = ["docs", "knowledge"]
@@ -40,7 +42,7 @@ ignore = ["E501"]  # line length is formatter's job
 python_version = "3.11"
 strict = true
 warn_unreachable = true
-mypy_path = "packages/core/src:packages/kb/src"
+mypy_path = "packages/core/src:packages/kb/src:packages/puzzle/src"
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
@@ -54,7 +56,7 @@ module = ["opentelemetry.exporter.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["packages/core/tests", "packages/kb/tests"]
+testpaths = ["packages/core/tests", "packages/kb/tests", "packages/puzzle/tests"]
 addopts = "-q --strict-markers"
 markers = [
     "live: hits the Anthropic API; skipped unless ANTHROPIC_API_KEY is set",
